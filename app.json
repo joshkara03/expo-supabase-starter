@@ -52,7 +52,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-video",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos and videos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos and videos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
     ]
   }
 }
