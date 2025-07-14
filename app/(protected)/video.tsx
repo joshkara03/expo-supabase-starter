@@ -26,12 +26,13 @@ const exampleShots: Shot[] = [
 ];
 
 export default function VideoScreen() {
-  const params = useLocalSearchParams<{ videoUri?: string; shots?: string; analyze?: string }>();
-  const { videoUri, shots: shotsParam, analyze } = params;
+  const params = useLocalSearchParams<{ videoUri?: string; shots?: string; analyze?: string; isExampleData?: string }>();
+  const { videoUri, shots: shotsParam, analyze, isExampleData } = params;
   
   console.log('VideoScreen params:', params);
   console.log('VideoScreen videoUri:', videoUri);
   console.log('VideoScreen analyze:', analyze);
+  console.log('VideoScreen isExampleData:', isExampleData);
   
   // If no videoUri, show the video picker
   if (!videoUri) {
@@ -66,7 +67,12 @@ export default function VideoScreen() {
   
   console.log('Showing VideoPlayer with URI:', videoUri);
   console.log('Shot data count:', shotData.length);
+  console.log('Using example data:', isExampleData === 'true');
   
-  // Show the video player with shots data
-  return <VideoPlayer videoUri={videoUri} shots={shotData} />;
+  // Show the video player with shots data and example data flag
+  return <VideoPlayer 
+    videoUri={videoUri} 
+    shots={shotData} 
+    isExampleData={isExampleData === 'true'} 
+  />;
 }

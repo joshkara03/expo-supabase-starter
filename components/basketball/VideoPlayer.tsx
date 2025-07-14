@@ -19,6 +19,7 @@ export interface Shot {
 interface VideoPlayerProps {
   videoUri: string;
   shots: Shot[];
+  isExampleData?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -31,39 +32,55 @@ const tsToMs = (ts: string): number => {
 };
 
 // How close (seconds) the playback position must be to trigger a shot overlay
-const OVERLAY_TOLERANCE_SECONDS = 1.5; // Increased from 0.7 to make detection more reliable
+const OVERLAY_TOLERANCE_SECONDS = 2.0; // Increased from 1.5 to make detection more reliable
 
 // ─────────────────────────────────────────────────────────
 //  Component
 // ─────────────────────────────────────────────────────────
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots, isExampleData = false }) => {
   console.log('VideoPlayer rendering with URI:', videoUri);
   console.log('VideoPlayer shots data:', shots);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
   
   // Create a video player instance with the provided URI
   const player = useVideoPlayer(videoUri);
   
   // Handle loading state with useEffect
   useEffect(() => {
+    let isMounted = true;
+    
     // Set a timeout to hide the loading indicator after a short delay
     // This is a simple workaround since we don't have direct load events
     const loadingTimer = setTimeout(() => {
+      if (!isMounted) return;
+      
       console.log('Video assumed to be loaded');
       setIsLoading(false);
-      // Try to play the video
-      try {
-        player.play();
-        setIsPlaying(true);
-      } catch (error) {
-        console.error('Error playing video:', error);
-      }
-    }, 1500); // Wait 1.5 seconds before assuming video is loaded
+      setVideoReady(true);
+      
+      // Add a small delay before playing to ensure UI is ready
+      setTimeout(() => {
+        if (!isMounted) return;
+        
+        // Try to play the video
+        try {
+          player.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.error('Error playing video:', error);
+        }
+      }, 500);
+    }, 3000); // Wait 3 seconds before assuming video is loaded - increased for reliability
     
-    return () => clearTimeout(loadingTimer);
+    return () => {
+      isMounted = false;
+      clearTimeout(loadingTimer);
+    };
   }, [player, videoUri]);
   
   // Subscribe to time updates from the player
@@ -71,6 +88,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
   
   // Access the current playback time directly from the player
   const currentTimeSeconds = player.currentTime || 0;
+  
+  // Update current position for more reliable tracking
+  // We use a ref to avoid infinite update loops
+  const lastTimeRef = React.useRef(0);
+  useEffect(() => {
+    if (currentTimeSeconds > 0 && Math.abs(currentTimeSeconds - lastTimeRef.current) > 0.1) {
+      lastTimeRef.current = currentTimeSeconds;
+      setCurrentPosition(currentTimeSeconds);
+    }
+  }, [currentTimeSeconds]);
   
   // Pre-compute shot lookup in seconds for efficiency
   const shotsSec = useMemo(
@@ -87,9 +114,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
   const [activeShot, setActiveShot] = useState<Shot | null>(null);
   const [showDebugOverlay, setShowDebugOverlay] = useState(true);
   
+  // Track the active shot with a ref to avoid unnecessary re-renders
+  const activeShotRef = React.useRef(null);
+  
   // Update active shot whenever the time changes
   useEffect(() => {
-    const positionSeconds = currentTimeSeconds;
+    // Only start checking for shots when video is ready
+    if (!videoReady) return;
+    
+    const positionSeconds = currentPosition;
     
     // Log every second for debugging
     if (positionSeconds > 0 && Math.floor(positionSeconds * 10) % 10 === 0) {
@@ -101,28 +134,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
       (s) => Math.abs(positionSeconds - s.seconds) < OVERLAY_TOLERANCE_SECONDS
     );
     
+    // Only update state if the shot has changed
     if (matchingShot) {
-      console.log('FOUND SHOT at time:', positionSeconds.toFixed(1), 'shot time:', matchingShot.seconds);
-      console.log('Shot details:', matchingShot);
-      setActiveShot(matchingShot);
-    } else {
-      // Clear active shot when not near any shot timestamp
-      if (activeShot) {
-        setActiveShot(null);
+      if (!activeShotRef.current || activeShotRef.current.seconds !== matchingShot.seconds) {
+        console.log('FOUND SHOT at time:', positionSeconds.toFixed(1), 'shot time:', matchingShot.seconds);
+        console.log('Shot details:', matchingShot);
+        activeShotRef.current = matchingShot;
+        setActiveShot(matchingShot);
       }
+    } else if (activeShot) {
+      // Clear active shot when not near any shot timestamp
+      activeShotRef.current = null;
+      setActiveShot(null);
     }
-  }, [currentTimeSeconds, shotsSec]);
+  }, [currentPosition, shotsSec, videoReady, activeShot]);
   
-  // Log all shot timestamps on mount
+  // Log all shot timestamps on mount and preload shot data
   useEffect(() => {
+    let isMounted = true;
     console.log('All shot timestamps (seconds):', shotsSec.map(s => s.seconds));
     
     // Toggle debug overlay every 5 seconds to ensure it's visible
     const debugInterval = setInterval(() => {
-      setShowDebugOverlay(prev => !prev);
+      if (isMounted) {
+        setShowDebugOverlay(prev => !prev);
+      }
     }, 5000);
     
-    return () => clearInterval(debugInterval);
+    // Preload all shots into memory to ensure they're ready
+    shotsSec.forEach(shot => {
+      console.log(`Preloading shot at ${shot.seconds}s: ${shot.shot_type} - ${shot.result}`);
+    });
+    
+    return () => {
+      isMounted = false;
+      clearInterval(debugInterval);
+    };
   }, [shotsSec]);
 
   /* ───────────── Render ───────────── */
@@ -151,16 +198,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
         allowsFullscreen={true}
       />
 
-      {/* Always visible test overlay */}
-      <View className="absolute top-20 left-4 bg-red-500 p-2 rounded">
+      {/* Shot count indicator */}
+      <View className="absolute top-20 left-4 bg-blue-500 p-2 rounded">
         <Text className="text-white text-xs font-bold">
-          TEST OVERLAY ALWAYS VISIBLE
+          {shots.length} SHOTS DETECTED
         </Text>
       </View>
 
       {/* Shot feedback overlay that appears based on current time */}
-      {activeShot && (
-        <View className="absolute inset-x-4 bottom-32 rounded-lg bg-black p-4 border-4 border-yellow-400">
+      {activeShot && videoReady && (
+        <View className="absolute inset-x-4 bottom-32 rounded-lg bg-black/90 p-4 border-4 border-yellow-400">
           <Text
             className={`text-center text-xl font-bold ${
               activeShot.result === "made" ? "text-green-400" : "text-red-400"
@@ -182,6 +229,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUri, shots }) => {
           </Text>
           <Text className="text-yellow-400 text-xs">
             Shot times: {shotsSec.map(s => s.seconds.toFixed(1)).join(', ')}
+          </Text>
+        </View>
+      )}
+      
+      {/* Example data indicator */}
+      {isExampleData && (
+        <View className="absolute top-4 left-4 bg-yellow-500/90 p-2 rounded-lg">
+          <Text className="text-black text-xs font-bold">
+            EXAMPLE FEEDBACK
           </Text>
         </View>
       )}

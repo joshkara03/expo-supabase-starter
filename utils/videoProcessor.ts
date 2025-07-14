@@ -3,6 +3,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Video } from 'expo-av';
 import { Platform } from 'react-native';
 import { analyseFrame } from './geminiShot';
+import { analyzeBasketballVideo } from './geminiVideo';
 import { Shot } from '@/components/basketball/VideoPlayer';
 
 // How many frames to extract per second of video
@@ -11,15 +12,79 @@ const FRAMES_PER_SECOND = 1;
 const ANALYSIS_INTERVAL_SEC = 2;
 
 /**
- * Extract frames from a video at specified intervals and analyze them with Gemini
- * @param videoUri URI of the video to process
- * @returns Promise resolving to an array of Shot objects
+ * Result of video processing, including shots and metadata
  */
-export async function processVideoForCoaching(videoUri: string): Promise<Shot[]> {
+export interface VideoProcessingResult {
+  shots: Shot[];
+  isExampleData: boolean;
+}
+
+/**
+ * Process a video for basketball coaching feedback using Gemini API
+ * @param videoUri URI of the video to process
+ * @returns Promise resolving to VideoProcessingResult with shots and metadata
+ */
+export async function processVideoForCoaching(videoUri: string): Promise<VideoProcessingResult> {
   console.log('Processing video for coaching:', videoUri);
   
-  // For now, return example shot data instead of trying to process the video
-  // This avoids the Video component loading issues
+  try {
+    // Check if the video file exists
+    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    if (!fileInfo.exists) {
+      throw new Error(`Video file not found: ${videoUri}`);
+    }
+    
+    console.log('Video file size:', fileInfo.size, 'bytes');
+    
+    // If the video is too large (>20MB), we'll need to compress it
+    const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB
+    
+    let processedVideoUri = videoUri;
+    if (fileInfo.size > MAX_VIDEO_SIZE) {
+      console.log('Video is too large, compression would be needed');
+      // In a production app, you would implement video compression here
+      // For now, we'll proceed with the original video and handle potential API limitations
+    }
+    
+    // Use the new Gemini video analysis function
+    try {
+      const shots = await analyzeBasketballVideo(processedVideoUri);
+      console.log('Video analysis complete, shots detected:', shots.length);
+      return {
+        shots,
+        isExampleData: false
+      };
+    } catch (error: any) {
+      console.error('Error during video analysis:', error);
+      
+      // Check if it's a quota error
+      const errorMessage = (error?.toString() || '').toLowerCase();
+      const isQuotaError = errorMessage.includes('quota') || 
+                          errorMessage.includes('rate limit') || 
+                          errorMessage.includes('429');
+      
+      // Fall back to example data if the API fails
+      console.log('Falling back to example shot data');
+      return {
+        shots: getExampleShotData(),
+        isExampleData: true
+      };
+    }
+  } catch (error) {
+    console.error('Error in processVideoForCoaching:', error);
+    
+    // Return example data as fallback
+    return {
+      shots: getExampleShotData(),
+      isExampleData: true
+    };
+  }
+}
+
+/**
+ * Returns example shot data for testing or fallback purposes
+ */
+function getExampleShotData(): Shot[] {
   return [
     {
       timestamp_of_outcome: "0:07.5",
@@ -49,49 +114,51 @@ export async function processVideoForCoaching(videoUri: string): Promise<Shot[]>
       feedback: "Drive that knee on the layup, protect the ball higher with your off-hand, and finish decisively."
     }
   ];
-  
-  // The code below is commented out because it's causing issues with Video component loading
-  // In a production app, you would implement proper frame extraction
-  /*
-  // Create a temporary Video component to get video metadata
-  const video = new Video({});
-  
-  try {
-    // Load the video to get its duration
-    return new Promise((resolve, reject) => {
-      video.loadAsync({ uri: videoUri }, {}, false)
-        .then(status => {
-          if (!status.isLoaded || !status.durationMillis) {
-            reject(new Error('Could not load video metadata'));
-            return;
-          }
-          
-          const durationMs = status.durationMillis;
-          const durationSec = Math.floor(durationMs / 1000);
-          console.log(`Video duration: ${durationSec} seconds`);
-          
-          // Calculate frame extraction points (every N seconds)
-          const framePoints = [];
-          for (let i = 0; i < durationSec; i += ANALYSIS_INTERVAL_SEC) {
-            framePoints.push(i * 1000); // Convert to milliseconds
-          }
-          
-          // Process the frames sequentially to avoid memory issues
-          processFramesSequentially(videoUri, framePoints)
-            .then(shots => {
-              console.log(`Processed ${shots.length} shots`);
-              resolve(shots);
-            })
-            .catch(reject);
-        })
-        .catch(reject);
-    });
-  } finally {
-    // Clean up
-    video.unloadAsync();
-  }
-  */
 }
+  
+// Note: The frame extraction code below is kept for reference but is not used in the current implementation
+// In a production app with more advanced requirements, you might want to implement frame extraction
+// instead of sending the entire video to the API
+
+/*
+// Create a temporary Video component to get video metadata
+const video = new Video({});
+
+try {
+  // Load the video to get its duration
+  return new Promise((resolve, reject) => {
+    video.loadAsync({ uri: videoUri }, {}, false)
+      .then(status => {
+        if (!status.isLoaded || !status.durationMillis) {
+          reject(new Error('Could not load video metadata'));
+          return;
+        }
+        
+        const durationMs = status.durationMillis;
+        const durationSec = Math.floor(durationMs / 1000);
+        console.log(`Video duration: ${durationSec} seconds`);
+        
+        // Calculate frame extraction points (every N seconds)
+        const framePoints = [];
+        for (let i = 0; i < durationSec; i += ANALYSIS_INTERVAL_SEC) {
+          framePoints.push(i * 1000); // Convert to milliseconds
+        }
+        
+        // Process the frames sequentially to avoid memory issues
+        processFramesSequentially(videoUri, framePoints)
+          .then(shots => {
+            console.log(`Processed ${shots.length} shots`);
+            resolve(shots);
+          })
+          .catch(reject);
+      })
+      .catch(reject);
+  });
+} finally {
+  // Clean up
+  video.unloadAsync();
+}
+*/
 
 /**
  * Process video frames sequentially to avoid memory issues

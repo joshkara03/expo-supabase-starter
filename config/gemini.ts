@@ -12,5 +12,13 @@ if (!apiKey) {
 // Initialize the GoogleGenerativeAI client
 export const genAI = new GoogleGenerativeAI(apiKey || 'dummy-key');
 
-// Create a model instance for vision tasks
-export const gemini = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+// Create model instances for different tasks
+
+// For image analysis (single frames)
+export const geminiVision = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+// For video analysis (supports video input)
+export const geminiVideo = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+// Default model for backward compatibility
+export const gemini = geminiVision;
