@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import VideoPlayer, { Shot } from "@/components/basketball/VideoPlayer";
+import { Shot } from "@/components/basketball/VideoPlayer";
+import EnhancedVideoPlayer from "@/components/basketball/EnhancedVideoPlayer";
 import VideoPicker from "@/components/basketball/VideoPicker";
 import VideoAnalysis from "@/components/basketball/VideoAnalysis";
 
@@ -69,8 +70,8 @@ export default function VideoScreen() {
   console.log('Shot data count:', shotData.length);
   console.log('Using example data:', isExampleData === 'true');
   
-  // Show the video player with shots data and example data flag
-  return <VideoPlayer 
+  // Show the enhanced video player with shots data and example data flag
+  return <EnhancedVideoPlayer 
     videoUri={videoUri} 
     shots={shotData} 
     isExampleData={isExampleData === 'true'} 
