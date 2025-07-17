@@ -435,6 +435,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1F2937',
+    marginTop: 0, // Ensure we don't overlap with the header
   },
   loadingContainer: {
     flex: 1,

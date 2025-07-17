@@ -1,8 +1,10 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Shot } from "@/components/basketball/VideoPlayer";
 import EnhancedVideoPlayer from "@/components/basketball/EnhancedVideoPlayer";
 import VideoPicker from "@/components/basketball/VideoPicker";
 import VideoAnalysis from "@/components/basketball/VideoAnalysis";
+import { MaterialIcons } from '@expo/vector-icons';
 
 // Example shot data format for reference
 const exampleShots: Shot[] = [
@@ -70,10 +72,50 @@ export default function VideoScreen() {
   console.log('Shot data count:', shotData.length);
   console.log('Using example data:', isExampleData === 'true');
   
+  const router = useRouter();
+
+  const handleBack = () => {
+    // Navigate back to the video picker screen
+    router.replace('/(protected)/(tabs)/picker');
+  };
+
   // Show the enhanced video player with shots data and example data flag
-  return <EnhancedVideoPlayer 
-    videoUri={videoUri} 
-    shots={shotData} 
-    isExampleData={isExampleData === 'true'} 
-  />;
+  return (
+    <View style={styles.container}>
+      <EnhancedVideoPlayer 
+        videoUri={videoUri} 
+        shots={shotData} 
+        isExampleData={isExampleData === 'true'} 
+      />
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={handleBack}
+      >
+        <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
+        <Text style={styles.backText}>Back to Video Selection</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1F2937',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#374151',
+    padding: 12,
+    margin: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  backText: {
+    color: '#FFFFFF',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+});

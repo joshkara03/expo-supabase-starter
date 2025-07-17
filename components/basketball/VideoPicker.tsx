@@ -85,12 +85,14 @@ const VideoPicker = () => {
       <Text style={styles.title}>Basketball Video Coach</Text>
       
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={pickVideo}>
-          <Text style={styles.buttonText}>Pick Video to Play</Text>
+        <TouchableOpacity 
+          style={[styles.button, styles.recordButton]} 
+          onPress={() => router.replace({ pathname: '/(protected)/(tabs)' })}>
+          <Text style={styles.buttonText}>Record Shots</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.button, styles.analyzeButton]} onPress={pickVideoForAnalysis}>
-          <Text style={styles.buttonText}>Pick Video for AI Coaching</Text>
+          <Text style={[styles.buttonText, styles.analyzeButtonText]}>Pick Video for AI Coaching</Text>
         </TouchableOpacity>
       </View>
       
@@ -137,13 +139,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  recordButton: {
+    backgroundColor: '#FF6B35', // Basketball orange
+  },
   analyzeButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
   },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  analyzeButtonText: {
+    color: '#FF6B35',
   },
 });
 
