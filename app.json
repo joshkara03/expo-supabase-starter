@@ -10,9 +10,10 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "5", 
       "config": {
         "usesNonExemptEncryption": false
       },
