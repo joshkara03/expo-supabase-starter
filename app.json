@@ -16,9 +16,6 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app uses the camera to record basketball shots for AI analysis and coaching feedback."
-      },
       "splash": {
         "image": "./assets/splash.png",
         "resizeMode": "cover",
@@ -33,7 +30,7 @@
         "dark": "./assets/icon-dark.png",
         "light": "./assets/icon.png"
       },
-      "bundleIdentifier": "com.joshkarathra.expostarter"
+      "bundleIdentifier": "com.flemingvincent.ExpoSupabaseStarter"
     },
     "android": {
       "adaptiveIcon": {
@@ -48,12 +45,7 @@
           "resizeMode": "cover",
           "image": "./assets/splash-dark.png"
         }
-      },
-      "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.ACCESS_MEDIA_LOCATION"
-      ]
+      }
     },
     "experiments": {
       "typedRoutes": true
@@ -70,13 +62,6 @@
           "isAccessMediaLocationEnabled": true
         }
       ]
-    ],
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "bfdde747-9729-4a51-9828-f6bc6f78bd3a"
-      }
-    },
-    "owner": "joshkara"
+    ]
   }
 }
